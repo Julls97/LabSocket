@@ -19,18 +19,34 @@ namespace Server {
 					Byte[] bytes = new Byte[256];
 					int i = stream.Read(bytes, 0, bytes.Length);
 					string data = System.Text.Encoding.UTF8.GetString(bytes, 0, i);
-					string result = Calculate(data);
-					byte[] res = System.Text.Encoding.ASCII.GetBytes(result);
+					string result;
+					try {
+						if (IsDataCorrect(data)) result = Calculate(data);
+						else result = "Input incorrect.";
+					}
+					catch (Exception e) {
+						result = "Input incorrect.";
+					}
+					byte[] res = System.Text.Encoding.ASCII.GetBytes(result + ";");
 					stream.Write(res, 0, res.Length);
 					client.Close();
 				}
 			}
 			catch (SocketException e) {
-				Console.WriteLine("SocketException: {0}", e.Message);
+				Console.WriteLine("Lost connection.");
+				//Console.WriteLine("SocketException: {0}", e.Message);
 			}
 			catch (ArgumentNullException e) {
 				Console.WriteLine("ArgumentNullException: {0}", e.Message);
 			}
+		}
+
+		private static bool IsDataCorrect(string data) {
+			foreach (var item in data) {
+				if (!IsDelimeter(item) && !IsDigit(item) && !IsOperator(item)) 
+					return false;
+			}
+			return true;
 		}
 
 		private const string Delimiter = " ";
@@ -44,6 +60,13 @@ namespace Server {
 		private static string GetExpression(string input) {
 			string output = string.Empty;
 			var operStack = new Stack<char>();
+
+			for (int i = 0; i < input.Length; i++) {
+				if ((IsMinus(input[i])) && (i == 0 || IsOpenBracket(input[i - 1]))) {
+					input = input.Insert(i, "0");
+					i++;
+				}
+			}
 
 			for (var i = 0; i < input.Length; i++) {
 				if (IsDelimeter(input[i])) continue;
@@ -130,6 +153,14 @@ namespace Server {
 
 		public static bool IsOperator(char с) {
 			return "+-/*()".IndexOf(с) != -1;
+		}
+		
+		public static bool IsMinus(char с) {
+			return "-".IndexOf(с) != -1;
+		}
+		
+		public static bool IsOpenBracket(char с) {
+			return "(".IndexOf(с) != -1;
 		}
 
 		public static byte GetPriority(char c) {
